@@ -361,97 +361,8 @@ async function extendBooking(bookingId, hours) {
 
 // Setup security alert buttons
 function setupSecurityAlertButtons(bookingId, spotNumber, location, vehicle) {
-    const takeScreenshotBtn = document.getElementById('take-screenshot-btn');
     const sendAlertBtn = document.getElementById('send-alert-btn');
     const alertMessage = document.getElementById('alert-message');
-    
-    let screenshotTaken = false;
-    let screenshotData = null;
-    
-    // Take screenshot button
-    takeScreenshotBtn.onclick = async () => {
-        try {
-            alertMessage.textContent = '📸 Capturing screenshot...';
-            alertMessage.className = 'mt-3 text-sm text-blue-600 font-medium';
-            
-            // Create a canvas with information overlay
-            const canvas = document.createElement('canvas');
-            canvas.width = 1280;
-            canvas.height = 720;
-            const ctx = canvas.getContext('2d');
-            
-            // Dark background
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Add camera placeholder
-            ctx.fillStyle = '#2d2d2d';
-            ctx.fillRect(40, 40, canvas.width - 80, canvas.height - 200);
-            
-            // Add "Live Feed" text in center
-            ctx.fillStyle = '#666';
-            ctx.font = 'bold 48px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('🎥 LIVE CAMERA FEED', canvas.width / 2, canvas.height / 2 - 60);
-            
-            ctx.font = '32px Arial';
-            ctx.fillText('Security Alert Screenshot', canvas.width / 2, canvas.height / 2);
-            
-            // Add timestamp
-            const now = new Date();
-            ctx.font = '24px Arial';
-            ctx.fillStyle = '#999';
-            ctx.fillText(now.toLocaleString('en-IN'), canvas.width / 2, canvas.height / 2 + 50);
-            
-            // Add information overlay at bottom
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, canvas.height - 140, canvas.width, 140);
-            
-            // Add spot details
-            ctx.fillStyle = '#000';
-            ctx.font = 'bold 28px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText(`📍 Spot: ${spotNumber}`, 50, canvas.height - 95);
-            ctx.fillText(`📌 Location: ${location}`, 50, canvas.height - 55);
-            
-            ctx.textAlign = 'right';
-            ctx.fillText(`🚗 Vehicle: ${vehicle}`, canvas.width - 50, canvas.height - 95);
-            ctx.fillText(`⏰ ${now.toLocaleTimeString('en-IN')}`, canvas.width - 50, canvas.height - 55);
-            
-            // Add watermark
-            ctx.font = '20px Arial';
-            ctx.fillStyle = '#666';
-            ctx.textAlign = 'center';
-            ctx.fillText('Klyra Parking Management System', canvas.width / 2, canvas.height - 15);
-            
-            // Convert to blob and download
-            canvas.toBlob(async (blob) => {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                link.download = `parking-alert-${spotNumber}-${timestamp}.png`;
-                link.href = url;
-                link.click();
-                
-                URL.revokeObjectURL(url);
-                
-                alertMessage.textContent = '📸 Screenshot saved! Contains spot details and timestamp. You can now send the alert.';
-                alertMessage.className = 'mt-3 text-sm text-green-600 font-medium';
-                
-                screenshotTaken = true;
-                screenshotData = link.download;
-                
-                takeScreenshotBtn.innerHTML = '<i class="fa fa-check"></i> Screenshot Taken';
-                takeScreenshotBtn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
-                takeScreenshotBtn.classList.add('bg-green-600', 'hover:bg-green-700');
-            }, 'image/png');
-            
-        } catch (err) {
-            console.error('Screenshot error:', err);
-            alertMessage.textContent = '❌ Error taking screenshot. Please try again.';
-            alertMessage.className = 'mt-3 text-sm text-red-600';
-        }
-    };
     
     // Send alert button
     sendAlertBtn.onclick = async () => {
@@ -489,7 +400,7 @@ function setupSecurityAlertButtons(bookingId, spotNumber, location, vehicle) {
                     spot_number: spotNumber,
                     location: location,
                     vehicle_number: vehicle,
-                    screenshot_url: screenshotTaken ? screenshotData : null,
+                    screenshot_url: null,
                     description: description.trim(),
                     status: 'pending'
                 }])
@@ -497,21 +408,12 @@ function setupSecurityAlertButtons(bookingId, spotNumber, location, vehicle) {
             
             if (error) throw error;
             
-            alertMessage.textContent = '✅ Alert sent successfully! Admin team has been notified.';
+            alertMessage.textContent = '✅ Alert sent successfully! Admin team has been notified. If you took a screenshot, please keep it for reference.';
             alertMessage.className = 'mt-3 text-sm text-green-600 font-medium';
             
             sendAlertBtn.disabled = true;
             sendAlertBtn.classList.add('opacity-50', 'cursor-not-allowed');
             sendAlertBtn.innerHTML = '<i class="fa fa-check"></i> Alert Sent';
-            
-            // Reset screenshot button
-            setTimeout(() => {
-                screenshotTaken = false;
-                screenshotData = null;
-                takeScreenshotBtn.innerHTML = '<i class="fa fa-camera"></i> Take Screenshot';
-                takeScreenshotBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
-                takeScreenshotBtn.classList.add('bg-orange-600', 'hover:bg-orange-700');
-            }, 3000);
             
         } catch (err) {
             console.error('Alert error:', err);

@@ -156,28 +156,28 @@
                             <i class="fa fa-exclamation-triangle"></i>
                             Report Unusual Activity
                         </h4>
-                        <p class="text-sm text-red-700 mb-2">
-                            If you notice any suspicious activity, take a screenshot and send an alert to the admin team.
+                        <p class="text-sm text-red-700 mb-3">
+                            If you notice any suspicious activity, capture the video and send an alert to the admin team.
                         </p>
-                        <p class="text-xs text-red-600 mb-4">
-                            💡 Tip: For best results, use your device's screenshot feature (Windows+Shift+S or phone screenshot button) to capture the actual video feed.
-                        </p>
-                        <div class="flex gap-3">
-                            <button 
-                                id="take-screenshot-btn"
-                                class="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center justify-center gap-2"
-                            >
-                                <i class="fa fa-camera"></i>
-                                Take Screenshot
-                            </button>
-                            <button 
-                                id="send-alert-btn"
-                                class="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2"
-                            >
-                                <i class="fa fa-bell"></i>
-                                Send Alert
-                            </button>
+                        
+                        <!-- Screenshot Instructions -->
+                        <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-3 mb-4">
+                            <p class="text-xs font-semibold text-yellow-800 mb-2">📸 How to Capture Video Evidence:</p>
+                            <ul class="text-xs text-yellow-700 space-y-1 ml-4">
+                                <li><strong>Windows:</strong> Press <kbd class="px-1 py-0.5 bg-white border rounded">Win + Shift + S</kbd></li>
+                                <li><strong>Mac:</strong> Press <kbd class="px-1 py-0.5 bg-white border rounded">Cmd + Shift + 4</kbd></li>
+                                <li><strong>Mobile:</strong> Use your phone's screenshot button</li>
+                            </ul>
+                            <p class="text-xs text-yellow-700 mt-2">Then click "Send Alert" below to report the issue.</p>
                         </div>
+                        
+                        <button 
+                            id="send-alert-btn"
+                            class="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-colors font-semibold flex items-center justify-center gap-2"
+                        >
+                            <i class="fa fa-bell"></i>
+                            Send Security Alert
+                        </button>
                         <div id="alert-message" class="mt-3 text-sm"></div>
                     </div>
                 </div>
