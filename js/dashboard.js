@@ -374,31 +374,68 @@ function setupSecurityAlertButtons(bookingId, spotNumber, location, vehicle) {
             alertMessage.textContent = '📸 Capturing screenshot...';
             alertMessage.className = 'mt-3 text-sm text-blue-600 font-medium';
             
-            // Capture the camera feed area
-            const cameraContainer = document.querySelector('.aspect-video');
+            // Create a canvas with information overlay
+            const canvas = document.createElement('canvas');
+            canvas.width = 1280;
+            canvas.height = 720;
+            const ctx = canvas.getContext('2d');
             
-            // Use html2canvas to capture the visible area
-            const canvas = await html2canvas(cameraContainer, {
-                useCORS: true,
-                allowTaint: true,
-                logging: false,
-                backgroundColor: '#000000'
-            });
+            // Dark background
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Convert canvas to blob
+            // Add camera placeholder
+            ctx.fillStyle = '#2d2d2d';
+            ctx.fillRect(40, 40, canvas.width - 80, canvas.height - 200);
+            
+            // Add "Live Feed" text in center
+            ctx.fillStyle = '#666';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎥 LIVE CAMERA FEED', canvas.width / 2, canvas.height / 2 - 60);
+            
+            ctx.font = '32px Arial';
+            ctx.fillText('Security Alert Screenshot', canvas.width / 2, canvas.height / 2);
+            
+            // Add timestamp
+            const now = new Date();
+            ctx.font = '24px Arial';
+            ctx.fillStyle = '#999';
+            ctx.fillText(now.toLocaleString('en-IN'), canvas.width / 2, canvas.height / 2 + 50);
+            
+            // Add information overlay at bottom
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, canvas.height - 140, canvas.width, 140);
+            
+            // Add spot details
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 28px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`📍 Spot: ${spotNumber}`, 50, canvas.height - 95);
+            ctx.fillText(`📌 Location: ${location}`, 50, canvas.height - 55);
+            
+            ctx.textAlign = 'right';
+            ctx.fillText(`🚗 Vehicle: ${vehicle}`, canvas.width - 50, canvas.height - 95);
+            ctx.fillText(`⏰ ${now.toLocaleTimeString('en-IN')}`, canvas.width - 50, canvas.height - 55);
+            
+            // Add watermark
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('Klyra Parking Management System', canvas.width / 2, canvas.height - 15);
+            
+            // Convert to blob and download
             canvas.toBlob(async (blob) => {
-                // Create download link
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                link.download = `parking-spot-${spotNumber}-${timestamp}.png`;
+                link.download = `parking-alert-${spotNumber}-${timestamp}.png`;
                 link.href = url;
                 link.click();
                 
-                // Clean up
                 URL.revokeObjectURL(url);
                 
-                alertMessage.textContent = '📸 Screenshot saved to your downloads! You can now send the alert.';
+                alertMessage.textContent = '📸 Screenshot saved! Contains spot details and timestamp. You can now send the alert.';
                 alertMessage.className = 'mt-3 text-sm text-green-600 font-medium';
                 
                 screenshotTaken = true;
