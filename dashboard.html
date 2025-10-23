@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Klyra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navbar -->
+    <div id="navbar-placeholder"></div>
+
+    <main class="container mx-auto px-4 py-10">
+        <!-- Welcome -->
+        <div class="mb-8 text-center md:text-left">
+            <h1 class="text-3xl font-bold text-gray-900">Welcome back, <span id="welcome-name">User</span>!</h1>
+            <p class="text-gray-600">Your account dashboard and activity</p>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="mb-8 text-gray-600 text-center">Loading...</div>
+
+        <!-- Content -->
+        <div id="content" class="space-y-8 hidden">
+            <!-- Top Row: Balance, Redeem Coupon, and Buy Coupon -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Balance Card -->
+                <div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-lg p-6 shadow-lg">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-blue-100 text-sm mb-2">Available Balance</p>
+                            <h2 class="text-3xl font-bold">₹<span id="balance-amount">0.00</span></h2>
+                        </div>
+                        <div class="text-5xl opacity-20">
+                            <i class="fa fa-credit-card"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Redeem Coupon -->
+                <div class="bg-white border rounded-lg">
+                    <div class="p-4 border-b">
+                        <h3 class="text-base font-semibold">Redeem Coupon</h3>
+                        <p class="text-xs text-gray-500">Enter code to add credits</p>
+                    </div>
+                    <div class="p-4">
+                        <form id="coupon-form" class="flex gap-2">
+                            <input 
+                                type="text" 
+                                id="coupon-code" 
+                                placeholder="Enter code" 
+                                class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase"
+                                required
+                            >
+                            <button 
+                                type="submit" 
+                                class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                            >
+                                Redeem
+                            </button>
+                        </form>
+                        <div id="coupon-message" class="mt-2 text-xs"></div>
+                    </div>
+                </div>
+
+                <!-- Buy Coupon -->
+                <div class="bg-white border rounded-lg">
+                    <div class="p-4 border-b">
+                        <h3 class="text-base font-semibold">Buy Coupon</h3>
+                        <p class="text-xs text-gray-500">Purchase credits for yourself or gift</p>
+                    </div>
+                    <div class="p-4">
+                        <button 
+                            id="buy-coupon-btn"
+                            class="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                        >
+                            <i class="fa fa-shopping-cart"></i>
+                            Buy Coupon
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bookings Section -->
+            <div class="space-y-6">
+                <!-- Ongoing Bookings -->
+                <div class="bg-white border rounded-lg">
+                    <div class="p-6 border-b bg-green-50">
+                        <h3 class="text-lg font-semibold text-green-800 flex items-center gap-2">
+                            <i class="fa fa-circle text-green-500 animate-pulse"></i>
+                            Ongoing Bookings
+                        </h3>
+                        <p class="text-sm text-green-600">Currently active parking sessions</p>
+                    </div>
+                    <div id="ongoing-bookings-container" class="p-6 space-y-4"></div>
+                </div>
+
+                <!-- Upcoming Bookings -->
+                <div class="bg-white border rounded-lg">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold flex items-center gap-2">
+                            <i class="fa fa-clock-o text-blue-500"></i>
+                            Upcoming Bookings
+                        </h3>
+                        <p class="text-sm text-gray-500">Your scheduled parking reservations</p>
+                    </div>
+                    <div id="upcoming-bookings-container" class="p-6 space-y-4"></div>
+                </div>
+            </div>
+
+            <!-- Transaction History -->
+            <div class="bg-white border rounded-lg">
+                <div class="p-6 border-b">
+                    <h3 class="text-lg font-semibold">Transaction History</h3>
+                    <p class="text-sm text-gray-500">Your recent transactions and activities</p>
+                </div>
+                <div id="transactions-container" class="p-6 space-y-2 max-h-[500px] overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- Camera Feed Modal -->
+        <div id="camera-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <div class="p-6 border-b flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-semibold">Live Camera Feed</h3>
+                        <p class="text-sm text-gray-500">Spot: <span id="modal-spot-number"></span></p>
+                    </div>
+                    <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-2xl"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
+                        <iframe 
+                            id="camera-iframe" 
+                            class="w-full h-full rounded-lg"
+                            frameborder="0"
+                            allowfullscreen
+                        ></iframe>
+                    </div>
+                    <div class="mt-4 text-sm text-gray-600">
+                        <p><strong>Location:</strong> <span id="modal-location"></span></p>
+                        <p><strong>Vehicle:</strong> <span id="modal-vehicle"></span></p>
+                        <p><strong>Booking Time:</strong> <span id="modal-time"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <div id="footer-placeholder"></div>
+
+    <script type="module" src="js/navbar.js"></script>
+    <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+    <script type="module" src="js/footer.js"></script>
+    <script type="module" src="js/dashboard.js"></script>
+    <script type="module" src="js/authState.js"></script>
+    <script src="js/scrolltotop.js"></script>
+</body>
+</html>

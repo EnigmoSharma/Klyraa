@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klyra - Smart Parking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+    
+  <!-- ## Navbar -->
+    <div id="navbar-placeholder"></div>
+    
+    <!-- ## Hero Section -->
+    <section id="book" class="w-full bg-gray-50 py-10">
+      <div class="container mx-auto px-4">
+        <div class="grid md:grid-cols-2 gap-6 items-center">
+                <div class="space-y-6 p-8">
+                    <h1 class="text-5xl font-bold text-foreground leading-tight">
+                        The Smart Way to Park<br />
+                        <span class="text-blue-600">Parking, Re-imagined</span>
+                    </h1>
+                    <p class="text-xl text-muted-foreground">
+                        Leave parking anxiety behind. Find, book, and pay for your spot
+                        before you even arrive. Seamless parking is just a click away.
+                    </p>
+                </div>
+                <div class="flex justify-center p-8">
+                    <img
+                        src="assets/hero.svg"
+                        class="w-full max-w-xl rounded-lg"
+                        alt="Smart parking illustration"
+                    />
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- ## Booking Menu -->
+    <section class="w-full py-8 bg-white">
+      <div class="container mx-auto px-4">
+        <form id="booking-form" class="bg-white border-2 border-blue-600 rounded-lg p-6 shadow-lg">
+          <div class="grid md:grid-cols-5 gap-4 items-end">
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-600">Available Spots</label>
+              <div class="relative">
+                <select id="spot-select" class="pl-10 w-full p-2 border border-gray-300 rounded">
+                  <option value="">Select a spot</option>
+                </select>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-600">Start Date</label>
+              <div class="relative max-w-sm">
+                <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                  <svg class="w-4 h-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z"/>
+                  </svg>
+                </div>
+                <input id="date-input" type="date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5">
+              </div>
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-600">Start Time</label>
+              <input type="time" id="time-input" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-600">Duration</label>
+              <div class="flex gap-2">
+                <input type="number" id="duration-input" placeholder="8" class="flex-1 p-2 border border-gray-300 rounded" min="1" />
+                <select id="duration-type" class="w-24 p-2 border border-gray-300 rounded">
+                  <option value="hours">Hrs</option>
+                  <option value="days">Days</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700" id="book-btn">Book Spot</button>
+          </div>
+        </form>
+      </div>
+    </section>
+    
+    <!-- ## How it works -->
+    <section class="w-full py-20 bg-white">
+      <div class="container mx-auto px-4">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+          <h2 class="text-4xl font-bold text-gray-900 mb-4">How does it work?</h2>
+          <p class="text-xl text-gray-600">Your seamless parking experience is just a few clicks away. Follow these simple steps to book your guaranteed spot.</p>
+        </div>
+        <div class="grid md:grid-cols-5 gap-8">
+          <div class="flex flex-col items-center text-center space-y-4">
+            <div class="bg-blue-50 rounded-full p-6">
+              <svg class="w-12 h-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+            </div>
+            <div class="text-3xl font-bold text-blue-600">1</div>
+            <h3 class="text-lg font-semibold text-gray-900">Search for a Spot</h3>
+            <p class="text-sm text-gray-600">Enter your location and desired time</p>
+          </div>
+          <div class="flex flex-col items-center text-center space-y-4">
+            <div class="bg-blue-50 rounded-full p-6">
+              <svg class="w-12 h-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </div>
+            <div class="text-3xl font-bold text-blue-600">2</div>
+            <h3 class="text-lg font-semibold text-gray-900">Choose Your Spot</h3>
+            <p class="text-sm text-gray-600">View available spots with real-time data</p>
+          </div>
+          <div class="flex flex-col items-center text-center space-y-4">
+            <div class="bg-blue-50 rounded-full p-6">
+              <svg class="w-12 h-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="20" height="14" x="2" y="5" rx="2"/>
+                <line x1="2" y1="10" x2="22" y2="10"/>
+              </svg>
+            </div>
+            <div class="text-3xl font-bold text-blue-600">3</div>
+            <h3 class="text-lg font-semibold text-gray-900">Book & Pay</h3>
+            <p class="text-sm text-gray-600">Secure your spot with instant payment</p>
+          </div>
+          <div class="flex flex-col items-center text-center space-y-4">
+            <div class="bg-blue-50 rounded-full p-6">
+              <svg class="w-12 h-12 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <div class="text-3xl font-bold text-blue-600">4</div>
+            <h3 class="text-lg font-semibold text-gray-900">Navigate</h3>
+            <p class="text-sm text-gray-600">Get directions to your reserved spot</p>
+          </div>
+          <div class="flex flex-col items-center text-center space-y-4">
+            <div class="bg-blue-50 rounded-full p-6 flex items-center justify-center">
+              <i class="fa fa-camera text-blue-600 text-[48px]"></i>
+            </div>
+            <div class="text-3xl font-bold text-blue-600">5</div>
+            <h3 class="text-lg font-semibold text-gray-900">Park with Live View</h3>
+            <p class="text-sm text-gray-600">Access live feed for your spot anytime</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- ## Why Us -->
+    <section class="w-full py-20 ">
+      <div class="container mx-auto px-16">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+          <h2 class="text-4xl font-bold text-gray-900 mb-4">
+            Why Park with <span class="text-blue-600">Klyra?</span>
+          </h2>
+          <p class="text-xl text-gray-600">
+            Our smart parking system is designed from the ground up to make
+            your experience simple, secure, and stress-free.
+          </p>
+        </div>
+        <div class="space-y-8">
+          <div class="bg-blue-100 rounded-3xl p-4 md:p-12">
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+              <div class="space-y-6">
+                <h3 class="text-3xl font-bold text-gray-900">Ease of booking</h3>
+                <p class="text-lg text-gray-600">No more stressful searching. Find, reserve, and pay for your parking spot in seconds from our web platform before you even leave home.</p>
+              </div>
+              <div class="flex justify-center">
+                <img
+                  src="assets/easeofbooking.svg"
+                  class="w-[350px] rounded-lg"
+                  loading="lazy"
+                  alt="Ease of booking illustration"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="bg-blue-100 rounded-3xl p-4 md:p-12">
+            <div class="grid md:grid-cols-2 gap-8 items-center md:grid-flow-dense">
+              <div class="space-y-6 md:col-start-2">
+                <h3 class="text-3xl font-bold text-gray-900">Live Feed</h3>
+                <p class="text-lg text-gray-600">Once your spot is booked, you can view a dedicated live feed of your vehicle. This offers unparalleled security and peace of mind during your entire parking session.</p>
+              </div>
+              <div class="flex justify-center md:col-start-1 md:row-start-1">
+                <img
+                  src="assets/livefeed.svg"
+                  class="w-[350px] rounded-lg"
+                  loading="lazy"
+                  alt="Live Feed illustration"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="bg-blue-100 rounded-3xl p-4 md:p-12">
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+              <div class="space-y-6">
+                <h3 class="text-3xl font-bold text-gray-900">Sensor Based</h3>
+                <p class="text-lg text-gray-600">Our network of advanced sensors ensures the parking spot is 100% accurate. If our system shows a spot is free, it's guaranteed to be.</p>
+              </div>
+              <div class="flex justify-center">
+                <img
+                  src="assets/sensorbased.svg"
+                  class="w-[350px] rounded-lg"
+                  loading="lazy"
+                  alt="Sensor Based illustration"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="bg-blue-100 rounded-3xl p-4 md:p-12">
+            <div class="grid md:grid-cols-2 gap-8 items-center md:grid-flow-dense">
+              <div class="space-y-6 md:col-start-2">
+                <h3 class="text-3xl font-bold text-gray-900">Affordable prices</h3>
+                <p class="text-lg text-gray-600">With our clear, credit-based system, you always know the cost upfront. No hidden fees, just simple, affordable rates for the time you need.</p>
+              </div>
+              <div class="flex justify-center md:col-start-1 md:row-start-1">
+                <img
+                  src="assets/affordableprices.svg"
+                  class="w-[350px] rounded-lg"
+                  loading="lazy"
+                  alt="Affordable prices illustration"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="bg-blue-100 rounded-3xl p-4 md:p-12">
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+              <div class="space-y-6">
+                <h3 class="text-3xl font-bold text-gray-900">24/7 Service</h3>
+                <p class="text-lg text-gray-600">Our automated system works around the clock. Whether it's an early morning meeting or a late-night event, you can always book a spot with Klyra.</p>
+              </div>
+              <div class="flex justify-center">
+                <img
+                  src="assets/24_7.svg"
+                  class="w-[350px] rounded-lg"
+                  loading="lazy"
+                  alt="24/7 Service illustration"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- ## Manual Book -->
+    <section class="w-full pt-0 pb-20 ">
+      <div class="container mx-auto px-8">
+        <div class="bg-secondary rounded-2xl p-8 md:p-12">
+          <div class="grid md:grid-cols-2 gap-12 items-center">
+            <div class="space-y-6">
+              <h2 class="text-4xl font-bold text-foreground">
+                Ready to Park Smarter?
+              </h2>
+              <p class="text-xl text-muted-foreground">
+                Find and book your ideal parking spot in seconds.
+                Make parking the easiest part of your journey.
+              </p>
+              <form id="manual-booking-form" class="space-y-4">
+                <input type="tel" id="phone-input" placeholder="Enter 10-digit mobile number" class="w-80 h-12 px-4 text-lg bg-white border border-gray-300 rounded-2xl" maxlength="10" />                
+                <button type="submit" id="callback-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-2xl text-lg">
+                  Request a CallBack
+                </button>
+              </form>
+            </div>
+            <div class="flex justify-end">
+              <img
+                src="assets/booknow.svg"
+                class="w-[400px] rounded-lg"
+                alt="Ready to park illustration"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    
+    <!-- ##Testimonial -->
+    <section class="w-full pb-20">
+      <div class="container mx-auto px-4">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+          <h2 class="text-4xl font-bold text-gray-900 mb-4">Every great idea starts with a great team - meet ours</h2>
+          <p class="text-xl text-gray-600">Hear from the brilliant minds behind Klyra</p>
+        </div>
+        
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <!-- Testimonial 1 -->
+          <div class="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div class="flex items-center mb-4">
+              <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl font-bold mr-4">VS</div>
+              <div>
+                <h4 class="font-semibold text-lg">Vinayak Sharma</h4>
+                <div class="flex text-yellow-400 mt-1">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-gray-600">"Working on Klyra has been an incredible learning experience. From IoT integration to front-end design, every step has helped me grow."</p>
+          </div>
+          
+          <!-- Testimonial 2 -->
+          <div class="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div class="flex items-center mb-4">
+              <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 text-xl font-bold mr-4">AA</div>
+              <div>
+                <h4 class="font-semibold text-lg">Adwick Aakarsh</h4>
+                <div class="flex text-yellow-400 mt-1">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-gray-600">"Developing the real-time parking detection system taught us the importance of hardware-software synchronization. It's exciting to see our ideas take shape!"</p>
+          </div>
+          
+          <!-- Testimonial 3 -->
+          <div class="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div class="flex items-center mb-4">
+              <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xl font-bold mr-4">IK</div>
+              <div>
+                <h4 class="font-semibold text-lg">Ispriya Kumari</h4>
+                <div class="flex text-yellow-400 mt-1">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-gray-600">"Building the Klyra platform challenged us to think beyond textbooks — blending creativity, teamwork, and real-world problem solving."</p>
+          </div>
+
+          <!-- Testimonial 4 -->
+          <div class="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div class="flex items-center mb-4">
+              <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-xl font-bold mr-4">AD</div>
+              <div>
+                <h4 class="font-semibold text-lg">Mr. Ajay Dagar</h4>
+                <div class="flex text-yellow-400 mt-1">
+                  ★★★★★
+                </div>
+              </div>
+            </div>
+            <p class="text-gray-600">"I'm proud of the team's dedication and innovative approach to tackling urban parking challenges through technology."</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- ##ContactUs Section -->
+    <section class="w-full bg-white py-20">
+      <div class="container mx-auto px-4">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+          <h2 class="text-4xl font-bold text-gray-900 mb-4">Get in Touch</h2>
+          <p class="text-xl text-gray-600">Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+        </div>
+  
+        <div class="grid md:grid-cols-2 gap-12 items-center max-w-5xl mx-auto">
+          <form id="contactForm" class="space-y-6">
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">Name</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Your name"
+                required
+              >
+            </div>
+  
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="your@email.com"
+                required
+              >
+            </div>
+  
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">Subject</label>
+              <input
+                type="text"
+                id="subject"
+                name="subject"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="What's this about?"
+                required
+              >
+            </div>
+  
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">Message</label>
+              <textarea
+                id="message"
+                name="message"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Your message..."
+                rows="4"
+                required
+              ></textarea>
+            </div>
+  
+            <button
+              type="submit"
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+            >
+              Send Message
+            </button>
+            
+            <div id="successMessage" class="hidden p-4 mt-4 text-green-700 bg-green-100 rounded-lg">
+              Message sent successfully! We'll get back to you soon.
+            </div>
+            <div id="errorMessage" class="hidden p-4 mt-4 text-red-700 bg-red-100 rounded-lg">
+              Failed to send message. Please try again later.
+            </div>
+          </form>
+          <div class="flex justify-end">
+            <img
+              src="assets/map.svg"
+              class="w-full max-w-xl rounded-lg"
+              alt="Location map"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- ## Footer -->
+    <div id="footer-placeholder"></div>
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/footer.js"></script>
+    <script type="module" src="js/booking.js"></script>
+    <script type="module" src="js/manualbooking.js"></script>
+    <script type="module" src="js/contactUs.js"></script>
+    <script type="module" src="js/authState.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
+    <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.feather) feather.replace();
+      });
+    </script>
+    <script src="js/scrolltotop.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+      const dateInput = document.getElementById('date-input');
+      const timeInput = document.getElementById('time-input');
+      
+      // Ensures the date picker opens when you click anywhere inside the box
+      if (dateInput && dateInput.showPicker) {
+        dateInput.addEventListener('click', () => dateInput.showPicker());
+      }
+      
+      // Ensures the time picker opens when you click anywhere inside the box
+      if (timeInput && timeInput.showPicker) {
+        timeInput.addEventListener('click', () => timeInput.showPicker());
+      }
+      });
+    </script>
+</body>
+</html>

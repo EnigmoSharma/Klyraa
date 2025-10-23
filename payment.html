@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Coupon - Klyra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navbar -->
+    <div id="navbar-placeholder"></div>
+
+    <main class="container mx-auto px-4 py-10">
+        <div class="max-w-2xl mx-auto">
+            <!-- Header -->
+            <div class="mb-8 text-center">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Buy Parking Credits</h1>
+                <p class="text-gray-600">Purchase credits for yourself or gift to someone</p>
+            </div>
+
+            <!-- Payment Form -->
+            <div class="bg-white border rounded-lg shadow-lg p-8">
+                <form id="payment-form" class="space-y-6">
+                    <!-- Amount Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Amount</label>
+                        <div class="grid grid-cols-3 gap-4 mb-4">
+                            <button type="button" class="amount-btn px-4 py-3 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors" data-amount="100">
+                                ₹100
+                            </button>
+                            <button type="button" class="amount-btn px-4 py-3 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors" data-amount="500">
+                                ₹500
+                            </button>
+                            <button type="button" class="amount-btn px-4 py-3 border-2 border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors" data-amount="1000">
+                                ₹1000
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-gray-600">Custom:</span>
+                            <input 
+                                type="number" 
+                                id="custom-amount" 
+                                placeholder="Enter amount" 
+                                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                min="50"
+                                step="10"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Recipient Type -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Purchase For</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="relative flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors">
+                                <input type="radio" name="recipient" value="self" class="mr-3" checked>
+                                <div>
+                                    <div class="font-medium">Myself</div>
+                                    <div class="text-xs text-gray-500">Add to my wallet</div>
+                                </div>
+                            </label>
+                            <label class="relative flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors">
+                                <input type="radio" name="recipient" value="other" class="mr-3">
+                                <div>
+                                    <div class="font-medium">Gift to Someone</div>
+                                    <div class="text-xs text-gray-500">Generate coupon code</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Payment Summary -->
+                    <div class="bg-gray-50 rounded-lg p-6 space-y-3">
+                        <h3 class="font-semibold text-lg mb-4">Payment Summary</h3>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Amount</span>
+                            <span class="font-medium">₹<span id="summary-amount">0</span></span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Processing Fee</span>
+                            <span class="font-medium text-green-600">FREE</span>
+                        </div>
+                        <div class="border-t pt-3 flex justify-between">
+                            <span class="font-semibold">Total</span>
+                            <span class="font-bold text-xl text-blue-600">₹<span id="summary-total">0</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Button -->
+                    <button 
+                        type="submit" 
+                        id="pay-btn"
+                        class="w-full px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        disabled
+                    >
+                        <i class="fa fa-lock mr-2"></i>
+                        Proceed to Payment
+                    </button>
+
+                    <p class="text-xs text-gray-500 text-center">
+                        <i class="fa fa-shield mr-1"></i>
+                        Your payment is secure and encrypted
+                    </p>
+                </form>
+            </div>
+
+            <!-- Success Message (Hidden by default) -->
+            <div id="success-message" class="hidden mt-6 bg-green-50 border-2 border-green-500 rounded-lg p-6">
+                <div class="flex items-start gap-4">
+                    <div class="text-green-500 text-3xl">
+                        <i class="fa fa-check-circle"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-green-800 mb-2">Payment Successful!</h3>
+                        <div id="success-content"></div>
+                        <a href="dashboard.html" class="inline-block mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <div id="footer-placeholder"></div>
+
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/footer.js"></script>
+    <script type="module" src="js/payment.js"></script>
+    <script type="module" src="js/authState.js"></script>
+    <script src="js/scrolltotop.js"></script>
+</body>
+</html>

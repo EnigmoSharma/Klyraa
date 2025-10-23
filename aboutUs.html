@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - Klyra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+    <!-- ## Navbar -->
+    <div id="navbar-placeholder"></div>
+
+    <!-- Hero Section -->
+    <section class="w-full py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto text-center">
+                <h1 class="text-5xl font-bold text-gray-900 mb-6">
+                    About Klyra
+                </h1>
+                <p class="text-xl text-gray-600 mb-8">
+                    Exploring IoT and web technologies to develop a smart parking prototype,
+                    This project demonstrates how real-time data and automation can simplify parking management
+                </p>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <span class="bg-gray-200 px-4 py-2 rounded text-sm">
+                        🚀 Started 2025 (Capstone Project)
+                    </span>
+                    <span class="bg-gray-200 px-4 py-2 rounded text-sm">
+                        🔧 IoT + Web Integration
+                    </span>
+                    <span class="bg-gray-200 px-4 py-2 rounded text-sm">
+                        📡 Real-time Updates
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="w-full py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">5</div>
+                    <div class="text-gray-600">Test Users</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">2</div>
+                    <div class="text-gray-600">Parking Spots (Demo Setup)</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">Campus / Local</div>
+                    <div class="text-gray-600">Deployment Scope</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">&lt; 2 sec</div>
+                    <div class="text-gray-600">Live Update Speed</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mission Section -->
+    <section class="w-full py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <div class="grid md:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h2 class="text-4xl font-bold text-gray-900 mb-6">
+                            Our Mission
+                        </h2>
+                        <p class="text-lg text-gray-600 mb-6">
+                            Our goal is to demonstrate how IoT and real-time data can simplify parking management.
+                            This project integrates sensors, embedded systems, and web technologies to provide a prototype solution.
+                        </p>
+                        <p class="text-lg text-gray-600">
+                            While still a prototype, the system shows how automation can make parking more efficient
+                            and user-friendly in a campus or local setting.
+                        </p>
+                    </div>
+                    <div class="flex justify-center">
+                        <img
+                            src="assets/booknow.svg"
+                            class="w-[400px] rounded-lg"
+                            alt="Ready to park illustration"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="w-full py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">
+                    Key Features of the Klyra Smart Parking System
+                </h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Features of our smart parking prototype
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fa fa-map-marker text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Parking Spot Detection</h3>
+                    <p class="text-gray-600">
+                        Uses IR sensors to detect whether a parking slot is occupied or free.
+                    </p>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fa fa-clock-o text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Real-time Updates</h3>
+                    <p class="text-gray-600">
+                        Slot availability is updated instantly on the web portal.
+                    </p>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fa fa-shield text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Simple Reservations</h3>
+                    <p class="text-gray-600">
+                        Users can reserve available slots through the demo system.
+                    </p>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fa fa-bolt text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Quick Slot Allocation</h3>
+                    <p class="text-gray-600">
+                        Slots are assigned immediately upon booking in the prototype.
+                    </p>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fa fa-users text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Capstone Project</h3>
+                    <p class="text-gray-600">
+                        Developed as part of an academic project integrating IoT and web systems.
+                    </p>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fa fa-trophy text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Prototype Stage</h3>
+                    <p class="text-gray-600">
+                        Currently at proof-of-concept stage, showcasing system feasibility.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Team Section -->
+    <section class="w-full py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">
+                    Brain Behind Klyra
+                </h2>
+                <p class="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
+                    A dedicated student team working on IoT, embedded systems, and web technologies
+                    to build a smart parking prototype.
+                </p>
+
+                <div class="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                    <div class="text-center">
+                        <div class="w-32 h-32 bg-blue-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+                            <span class="text-4xl">🔧</span>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Hardware & IoT</h3>
+                        <p class="text-gray-600">
+                            Working on sensors, microcontrollers, and real-time data transmission
+                        </p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-32 h-32 bg-blue-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+                            <span class="text-4xl">💻</span>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Software & Web</h3>
+                        <p class="text-gray-600">
+                            Developing the web portal and backend for slot booking and monitoring
+                        </p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-32 h-32 bg-blue-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+                            <span class="text-4xl">📚</span>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Research & Integration</h3>
+                        <p class="text-gray-600">
+                            Focusing on system integration, testing, and research for future improvements
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ## Footer -->
+    <div id="footer-placeholder"></div>
+    <script type="module" src="js/navbar.js"></script>
+    <script type="module" src="js/footer.js"></script>
+    <script type="module" src="js/authState.js"></script>
+    <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.feather) feather.replace();
+        });
+    </script>
+    <script src="js/scrolltotop.js"></script>
+</body>
+</html>
