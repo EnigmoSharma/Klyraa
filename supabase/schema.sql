@@ -442,16 +442,6 @@ FOR EACH ROW
 EXECUTE FUNCTION update_sensor_timestamp();
 
 -- =====================================================
--- SAMPLE COUPONS (Optional - for testing)
--- =====================================================
-INSERT INTO coupons (code, amount, max_uses, used_count, is_active)
-VALUES 
-    ('WELCOME100', 100.00, 100, 0, true),
-    ('FIRST50', 50.00, 50, 0, true),
-    ('BONUS200', 200.00, 20, 0, true)
-ON CONFLICT (code) DO NOTHING;
-
--- =====================================================
 -- SAMPLE PARKING SPOTS (Optional - for testing)
 -- =====================================================
 INSERT INTO parking_spots (spot_number, location, camera_feed_url, is_available, sensor_id)
