@@ -369,7 +369,46 @@ async function updateAlertStatus(alertId, newStatus) {
     }
 }
 
+// Update camera URL for current spot
+async function updateCameraUrl() {
+    if (!currentSpotId) {
+        alert('No spot selected');
+        return;
+    }
+    
+    const newUrl = prompt('Enter YouTube Live embed URL:\n\nFormat: https://www.youtube.com/embed/VIDEO_ID\n\nTip: Start YouTube Live on your phone, get the video ID, and use the embed format above.');
+    
+    if (!newUrl || newUrl.trim() === '') {
+        return;
+    }
+    
+    // Validate URL format
+    if (!newUrl.includes('youtube.com/embed/') && !newUrl.includes('youtu.be/')) {
+        alert('Please use YouTube embed URL format:\nhttps://www.youtube.com/embed/VIDEO_ID');
+        return;
+    }
+    
+    try {
+        const { error } = await supabaseClient
+            .from('parking_spots')
+            .update({ camera_feed_url: newUrl.trim() })
+            .eq('id', currentSpotId);
+        
+        if (error) throw error;
+        
+        alert('Camera URL updated successfully!\n\nRefresh the page to see changes.');
+        
+        // Reload spot details
+        await showSpotDetails(currentSpotId);
+        
+    } catch (error) {
+        console.error('Error updating camera URL:', error);
+        alert('Error updating camera URL. Please try again.');
+    }
+}
+
 // Make functions available globally
 window.closeModal = closeModal;
 window.adminLogout = adminLogout;
 window.updateAlertStatus = updateAlertStatus;
+window.updateCameraUrl = updateCameraUrl;
