@@ -16,9 +16,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Load dashboard data
     await loadDashboard();
+    
+    // Load security alerts
+    await loadSecurityAlerts();
 
     // Setup coupon form
     document.getElementById('coupon-form').addEventListener('submit', generateCoupon);
+    
+    // Refresh alerts every 30 seconds
+    setInterval(loadSecurityAlerts, 30000);
 });
 
 async function loadDashboard() {
@@ -103,6 +109,7 @@ async function showSpotDetails(spotId) {
         if (bookingsError) throw bookingsError;
 
         const now = new Date();
+        const ongoing = allBookings.filter(b => new Date(b.start_time) <= now && new Date(b.end_time) > now);
         const upcoming = allBookings.filter(b => new Date(b.start_time) > now);
         const past = allBookings.filter(b => new Date(b.end_time) <= now);
 
@@ -122,6 +129,29 @@ async function showSpotDetails(spotId) {
             cameraFeed.innerHTML = '<p class="text-gray-500">No camera configured</p>';
         }
 
+        // Ongoing bookings
+        const ongoingDiv = document.getElementById('ongoing-bookings');
+        if (ongoing.length === 0) {
+            ongoingDiv.innerHTML = '<p class="text-gray-500">No ongoing bookings</p>';
+        } else {
+            ongoingDiv.innerHTML = ongoing.map(b => `
+                <div class="border border-green-200 rounded p-3 bg-green-50">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-semibold">${b.profiles?.username || 'Unknown'}</p>
+                            <p class="text-sm text-gray-600">${b.vehicle_number}</p>
+                            <p class="text-sm text-gray-600">
+                                ${new Date(b.start_time).toLocaleString()} - ${new Date(b.end_time).toLocaleString()}
+                            </p>
+                        </div>
+                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded flex items-center gap-1">
+                            <i class="fa fa-circle text-xs"></i>Active
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
         // Upcoming bookings
         const upcomingDiv = document.getElementById('upcoming-bookings');
         if (upcoming.length === 0) {
@@ -227,6 +257,119 @@ function adminLogout() {
     window.location.href = 'admin-auth.html';
 }
 
+// Load security alerts
+async function loadSecurityAlerts() {
+    try {
+        const { data: alerts, error } = await supabaseClient
+            .from('security_alerts')
+            .select(`
+                *,
+                profiles:user_id (username, email)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (error) throw error;
+
+        const container = document.getElementById('security-alerts-container');
+        const alertCount = document.getElementById('alert-count');
+        
+        const pendingCount = alerts.filter(a => a.status === 'pending').length;
+        alertCount.textContent = `${pendingCount} Pending`;
+
+        if (!alerts || alerts.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No security alerts</p>';
+            return;
+        }
+
+        container.innerHTML = alerts.map(alert => {
+            const statusColors = {
+                'pending': 'bg-red-100 text-red-800 border-red-300',
+                'reviewing': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                'resolved': 'bg-green-100 text-green-800 border-green-300'
+            };
+            
+            const statusIcons = {
+                'pending': 'fa-exclamation-circle',
+                'reviewing': 'fa-eye',
+                'resolved': 'fa-check-circle'
+            };
+
+            return `
+                <div class="border ${statusColors[alert.status]} rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i class="fa ${statusIcons[alert.status]}"></i>
+                                <span class="font-semibold text-gray-900">Spot ${alert.spot_number}</span>
+                                <span class="text-xs px-2 py-1 rounded ${statusColors[alert.status]}">${alert.status.toUpperCase()}</span>
+                            </div>
+                            <p class="text-sm text-gray-700 mb-1"><strong>Location:</strong> ${alert.location}</p>
+                            <p class="text-sm text-gray-700 mb-1"><strong>Vehicle:</strong> ${alert.vehicle_number || 'N/A'}</p>
+                            <p class="text-sm text-gray-700 mb-1"><strong>Reported by:</strong> ${alert.profiles?.username || 'Unknown'}</p>
+                            <p class="text-sm text-gray-600 mb-2"><strong>Description:</strong> ${alert.description}</p>
+                            ${alert.screenshot_url ? `<p class="text-xs text-blue-600"><i class="fa fa-camera"></i> Screenshot available</p>` : ''}
+                            <p class="text-xs text-gray-500 mt-2">${new Date(alert.created_at).toLocaleString()}</p>
+                        </div>
+                    </div>
+                    ${alert.status === 'pending' ? `
+                        <div class="flex gap-2 mt-3">
+                            <button 
+                                onclick="updateAlertStatus('${alert.id}', 'reviewing')"
+                                class="flex-1 bg-yellow-600 text-white py-1 px-3 rounded text-sm hover:bg-yellow-700"
+                            >
+                                Mark as Reviewing
+                            </button>
+                            <button 
+                                onclick="updateAlertStatus('${alert.id}', 'resolved')"
+                                class="flex-1 bg-green-600 text-white py-1 px-3 rounded text-sm hover:bg-green-700"
+                            >
+                                Mark as Resolved
+                            </button>
+                        </div>
+                    ` : ''}
+                    ${alert.status === 'reviewing' ? `
+                        <button 
+                            onclick="updateAlertStatus('${alert.id}', 'resolved')"
+                            class="w-full bg-green-600 text-white py-1 px-3 rounded text-sm hover:bg-green-700 mt-3"
+                        >
+                            Mark as Resolved
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Error loading security alerts:', error);
+    }
+}
+
+// Update alert status
+async function updateAlertStatus(alertId, newStatus) {
+    try {
+        const { error } = await supabaseClient
+            .from('security_alerts')
+            .update({ 
+                status: newStatus,
+                resolved_at: newStatus === 'resolved' ? new Date().toISOString() : null,
+                resolved_by: localStorage.getItem('admin_username')
+            })
+            .eq('id', alertId);
+
+        if (error) throw error;
+
+        // Reload alerts
+        await loadSecurityAlerts();
+        
+        alert(`Alert status updated to: ${newStatus}`);
+    } catch (error) {
+        console.error('Error updating alert status:', error);
+        alert('Error updating alert status');
+    }
+}
+
 // Make functions available globally
 window.closeModal = closeModal;
 window.adminLogout = adminLogout;
+window.updateAlertStatus = updateAlertStatus;

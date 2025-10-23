@@ -45,6 +45,20 @@
             </div>
         </div>
 
+        <!-- Security Alerts -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-red-700 flex items-center gap-2">
+                    <i class="fa fa-exclamation-triangle"></i>
+                    Security Alerts
+                </h2>
+                <span id="alert-count" class="px-3 py-1 bg-red-100 text-red-700 rounded-full font-semibold text-sm">0 Pending</span>
+            </div>
+            <div id="security-alerts-container" class="space-y-3 max-h-96 overflow-y-auto">
+                <!-- Alerts will be loaded here -->
+            </div>
+        </div>
+
         <!-- Parking Spots Grid -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4">Parking Spots</h2>
@@ -102,9 +116,23 @@
                     </div>
                 </div>
 
+                <!-- Ongoing Bookings -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-2 text-green-700 flex items-center gap-2">
+                        <i class="fa fa-circle text-green-500 animate-pulse"></i>
+                        Ongoing Bookings
+                    </h3>
+                    <div id="ongoing-bookings" class="space-y-2">
+                        <!-- Bookings will be loaded here -->
+                    </div>
+                </div>
+
                 <!-- Upcoming Bookings -->
                 <div class="mb-6">
-                    <h3 class="text-lg font-semibold mb-2">Upcoming Bookings</h3>
+                    <h3 class="text-lg font-semibold mb-2 text-blue-700 flex items-center gap-2">
+                        <i class="fa fa-clock-o text-blue-500"></i>
+                        Upcoming Bookings
+                    </h3>
                     <div id="upcoming-bookings" class="space-y-2">
                         <!-- Bookings will be loaded here -->
                     </div>
@@ -112,7 +140,7 @@
 
                 <!-- Past Bookings -->
                 <div>
-                    <h3 class="text-lg font-semibold mb-2">Past Bookings</h3>
+                    <h3 class="text-lg font-semibold mb-2 text-gray-700">Past Bookings</h3>
                     <div id="past-bookings" class="space-y-2">
                         <!-- Bookings will be loaded here -->
                     </div>

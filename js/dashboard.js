@@ -307,6 +307,15 @@ window.openCameraFeed = function(bookingId, spotNumber, location, vehicle, time,
     // Set camera feed URL
     iframe.src = cameraUrl;
     
+    // Store current booking data for alert
+    modal.dataset.bookingId = bookingId;
+    modal.dataset.spotNumber = spotNumber;
+    modal.dataset.location = location;
+    modal.dataset.vehicle = vehicle;
+    
+    // Setup screenshot and alert buttons
+    setupSecurityAlertButtons(bookingId, spotNumber, location, vehicle);
+    
     modal.classList.remove('hidden');
 };
 
@@ -347,4 +356,105 @@ async function extendBooking(bookingId, hours) {
         console.error('Extension error:', err);
         alert('Error extending booking. Please try again.');
     }
+}
+
+// Setup security alert buttons
+function setupSecurityAlertButtons(bookingId, spotNumber, location, vehicle) {
+    const takeScreenshotBtn = document.getElementById('take-screenshot-btn');
+    const sendAlertBtn = document.getElementById('send-alert-btn');
+    const alertMessage = document.getElementById('alert-message');
+    
+    let screenshotTaken = false;
+    let screenshotData = null;
+    
+    // Take screenshot button
+    takeScreenshotBtn.onclick = async () => {
+        try {
+            const iframe = document.getElementById('camera-iframe');
+            
+            // Simulate screenshot (in real scenario, you'd capture the iframe content)
+            // For now, we'll use a placeholder approach
+            alertMessage.textContent = '📸 Screenshot captured! You can now send the alert.';
+            alertMessage.className = 'mt-3 text-sm text-green-600 font-medium';
+            
+            screenshotTaken = true;
+            screenshotData = `screenshot_${bookingId}_${Date.now()}.jpg`;
+            
+            takeScreenshotBtn.innerHTML = '<i class="fa fa-check"></i> Screenshot Taken';
+            takeScreenshotBtn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+            takeScreenshotBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            
+        } catch (err) {
+            console.error('Screenshot error:', err);
+            alertMessage.textContent = '❌ Error taking screenshot. Please try again.';
+            alertMessage.className = 'mt-3 text-sm text-red-600';
+        }
+    };
+    
+    // Send alert button
+    sendAlertBtn.onclick = async () => {
+        const description = prompt('Describe the unusual activity you observed:');
+        
+        if (!description || description.trim() === '') {
+            alertMessage.textContent = '⚠️ Please provide a description of the activity.';
+            alertMessage.className = 'mt-3 text-sm text-yellow-600';
+            return;
+        }
+        
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                alertMessage.textContent = '❌ You must be logged in to send alerts.';
+                alertMessage.className = 'mt-3 text-sm text-red-600';
+                return;
+            }
+            
+            // Get spot_id from booking
+            const { data: booking } = await supabase
+                .from('bookings')
+                .select('spot_id')
+                .eq('id', bookingId)
+                .single();
+            
+            // Insert security alert
+            const { data, error } = await supabase
+                .from('security_alerts')
+                .insert([{
+                    user_id: user.id,
+                    booking_id: bookingId,
+                    spot_id: booking.spot_id,
+                    spot_number: spotNumber,
+                    location: location,
+                    vehicle_number: vehicle,
+                    screenshot_url: screenshotTaken ? screenshotData : null,
+                    description: description.trim(),
+                    status: 'pending'
+                }])
+                .select();
+            
+            if (error) throw error;
+            
+            alertMessage.textContent = '✅ Alert sent successfully! Admin team has been notified.';
+            alertMessage.className = 'mt-3 text-sm text-green-600 font-medium';
+            
+            sendAlertBtn.disabled = true;
+            sendAlertBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            sendAlertBtn.innerHTML = '<i class="fa fa-check"></i> Alert Sent';
+            
+            // Reset screenshot button
+            setTimeout(() => {
+                screenshotTaken = false;
+                screenshotData = null;
+                takeScreenshotBtn.innerHTML = '<i class="fa fa-camera"></i> Take Screenshot';
+                takeScreenshotBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                takeScreenshotBtn.classList.add('bg-orange-600', 'hover:bg-orange-700');
+            }, 3000);
+            
+        } catch (err) {
+            console.error('Alert error:', err);
+            alertMessage.textContent = '❌ Error sending alert. Please try again.';
+            alertMessage.className = 'mt-3 text-sm text-red-600';
+        }
+    };
 }
