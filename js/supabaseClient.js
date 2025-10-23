@@ -1,8 +1,8 @@
 // supabaseClient.js
 
-// Check if environment variables are injected
-const supabaseUrl = "%SUPABASE_URL%";
-const supabaseAnonKey = "%SUPABASE_ANON_KEY%";
+// Production Supabase credentials
+const supabaseUrl = "https://qkfqxemmuzdnbbriecnq.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrZnF4ZW1tdXpkbmJicmllY25xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMjgyNTcsImV4cCI6MjA3NjcwNDI1N30.OFjfbDCTocSm4TH-NuDYX03hQg-CsOD93lT0DdG0dc4";
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase credentials are missing. Please check your environment variables.');
