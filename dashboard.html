@@ -137,8 +137,10 @@
                     <div class="aspect-video bg-gray-900 rounded-lg flex items-center justify-center relative">
                         <iframe 
                             id="camera-iframe" 
-                            class="w-full h-full rounded-lg"
+                            class="w-full h-full rounded-lg pointer-events-none"
                             frameborder="0"
+                            allow="autoplay; encrypted-media"
+                            style="pointer-events: none;"
                             allowfullscreen
                         ></iframe>
                     </div>
@@ -183,6 +185,7 @@
     <!-- Footer -->
     <div id="footer-placeholder"></div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script type="module" src="js/navbar.js"></script>
     <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
     <script type="module" src="js/footer.js"></script>

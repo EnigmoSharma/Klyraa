@@ -120,10 +120,14 @@ async function showSpotDetails(spotId) {
         const cameraFeed = document.getElementById('camera-feed');
         if (spot.camera_feed_url) {
             cameraFeed.innerHTML = `
-                <img src="${spot.camera_feed_url}" 
-                     class="w-full h-full object-cover rounded-lg" 
-                     alt="Live Feed"
-                     onerror="this.parentElement.innerHTML='<p class=\\'text-gray-500\\'>Camera feed unavailable</p>'">
+                <iframe 
+                    src="${spot.camera_feed_url}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0"
+                    class="w-full h-full rounded-lg pointer-events-none" 
+                    frameborder="0"
+                    allow="autoplay; encrypted-media"
+                    style="pointer-events: none;"
+                    allowfullscreen
+                ></iframe>
             `;
         } else {
             cameraFeed.innerHTML = '<p class="text-gray-500">No camera configured</p>';

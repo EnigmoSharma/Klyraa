@@ -304,8 +304,9 @@ window.openCameraFeed = function(bookingId, spotNumber, location, vehicle, time,
     document.getElementById('modal-vehicle').textContent = vehicle;
     document.getElementById('modal-time').textContent = time;
     
-    // Set camera feed URL
-    iframe.src = cameraUrl;
+    // Set camera feed URL with mute and autoplay parameters
+    const urlParams = cameraUrl.includes('?') ? '&' : '?';
+    iframe.src = `${cameraUrl}${urlParams}autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0`;
     
     // Store current booking data for alert
     modal.dataset.bookingId = bookingId;
@@ -370,19 +371,43 @@ function setupSecurityAlertButtons(bookingId, spotNumber, location, vehicle) {
     // Take screenshot button
     takeScreenshotBtn.onclick = async () => {
         try {
-            const iframe = document.getElementById('camera-iframe');
+            alertMessage.textContent = '📸 Capturing screenshot...';
+            alertMessage.className = 'mt-3 text-sm text-blue-600 font-medium';
             
-            // Simulate screenshot (in real scenario, you'd capture the iframe content)
-            // For now, we'll use a placeholder approach
-            alertMessage.textContent = '📸 Screenshot captured! You can now send the alert.';
-            alertMessage.className = 'mt-3 text-sm text-green-600 font-medium';
+            // Capture the camera feed area
+            const cameraContainer = document.querySelector('.aspect-video');
             
-            screenshotTaken = true;
-            screenshotData = `screenshot_${bookingId}_${Date.now()}.jpg`;
+            // Use html2canvas to capture the visible area
+            const canvas = await html2canvas(cameraContainer, {
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+                backgroundColor: '#000000'
+            });
             
-            takeScreenshotBtn.innerHTML = '<i class="fa fa-check"></i> Screenshot Taken';
-            takeScreenshotBtn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
-            takeScreenshotBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            // Convert canvas to blob
+            canvas.toBlob(async (blob) => {
+                // Create download link
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                link.download = `parking-spot-${spotNumber}-${timestamp}.png`;
+                link.href = url;
+                link.click();
+                
+                // Clean up
+                URL.revokeObjectURL(url);
+                
+                alertMessage.textContent = '📸 Screenshot saved to your downloads! You can now send the alert.';
+                alertMessage.className = 'mt-3 text-sm text-green-600 font-medium';
+                
+                screenshotTaken = true;
+                screenshotData = link.download;
+                
+                takeScreenshotBtn.innerHTML = '<i class="fa fa-check"></i> Screenshot Taken';
+                takeScreenshotBtn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+                takeScreenshotBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+            }, 'image/png');
             
         } catch (err) {
             console.error('Screenshot error:', err);
