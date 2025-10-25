@@ -56,22 +56,34 @@ async function loadDashboard() {
         // Load sensor data to count actually occupied spots
         const { data: sensorData, error: sensorError } = await supabaseClient
             .from('sensor_data')
-            .select('id, obstacle, updated_at')
-            .gte('updated_at', new Date(Date.now() - 300000).toISOString()); // Last 5 minutes
+            .select('*');
+
+        console.log('Sensor data fetched:', sensorData);
+        console.log('Sensor error:', sensorError);
 
         let occupiedCount = 0;
-        if (!sensorError && sensorData) {
-            // Count spots with sensors showing obstacle = true
+        if (!sensorError && sensorData && sensorData.length > 0) {
+            // Create sensor map: sensor_id -> obstacle status
             const sensorMap = {};
-            sensorData.forEach(s => {
-                sensorMap[s.id] = s.obstacle === true;
+            sensorData.forEach(sensor => {
+                console.log(`Sensor ${sensor.id}: obstacle=${sensor.obstacle}, updated=${sensor.updated_at}`);
+                sensorMap[sensor.id] = sensor.obstacle === true;
             });
             
+            // Count spots with sensors showing obstacle = true
             spots.forEach(spot => {
-                if (spot.sensor_id && sensorMap[spot.sensor_id]) {
-                    occupiedCount++;
+                if (spot.sensor_id) {
+                    const isOccupied = sensorMap[spot.sensor_id];
+                    console.log(`Spot ${spot.spot_number}: sensor_id=${spot.sensor_id}, occupied=${isOccupied}`);
+                    if (isOccupied) {
+                        occupiedCount++;
+                    }
                 }
             });
+            
+            console.log('Total occupied count:', occupiedCount);
+        } else {
+            console.warn('No sensor data available or error occurred');
         }
 
         // Update stats
@@ -93,18 +105,24 @@ function renderParkingGrid(spots, bookings, sensorData = []) {
     const grid = document.getElementById('parking-grid');
     grid.innerHTML = '';
 
+    console.log('Rendering parking grid with', spots.length, 'spots and', sensorData?.length || 0, 'sensors');
+
     // Create sensor map for quick lookup
     const sensorMap = {};
-    if (sensorData) {
+    if (sensorData && sensorData.length > 0) {
         sensorData.forEach(s => {
             sensorMap[s.id] = s.obstacle === true;
+            console.log(`Grid: Sensor ${s.id} -> obstacle=${s.obstacle}`);
         });
     }
 
     spots.forEach(spot => {
         // Check if spot is occupied based on sensor data
-        const isOccupied = spot.sensor_id && sensorMap[spot.sensor_id];
+        const hasSensor = !!spot.sensor_id;
+        const isOccupied = hasSensor && sensorMap[spot.sensor_id] === true;
         const activeBooking = bookings.find(b => b.spot_id === spot.id && new Date(b.end_time) > new Date());
+
+        console.log(`Grid spot ${spot.spot_number}: sensor_id=${spot.sensor_id}, isOccupied=${isOccupied}, hasSensor=${hasSensor}`);
 
         const spotDiv = document.createElement('div');
         spotDiv.className = `
@@ -115,7 +133,7 @@ function renderParkingGrid(spots, bookings, sensorData = []) {
             <div class="text-2xl mb-2">${spot.spot_number}</div>
             <div class="text-sm">${isOccupied ? 'Occupied' : 'Available'}</div>
             ${activeBooking ? '<div class="text-xs mt-1">Booked</div>' : ''}
-            ${spot.sensor_id ? '<div class="text-xs mt-1 opacity-75"><i class="fa fa-wifi"></i> Sensor</div>' : ''}
+            ${hasSensor ? '<div class="text-xs mt-1 opacity-75"><i class="fa fa-wifi"></i> Sensor</div>' : '<div class="text-xs mt-1 opacity-75 text-gray-300">No Sensor</div>'}
         `;
         spotDiv.onclick = () => showSpotDetails(spot.id);
         grid.appendChild(spotDiv);
@@ -305,14 +323,57 @@ async function loadSecurityAlerts() {
     try {
         console.log('Loading security alerts...');
         
-        const { data: alerts, error } = await supabaseClient
+        // Try with relationship first
+        let { data: alerts, error } = await supabaseClient
             .from('security_alerts')
             .select(`
                 *,
-                profiles:user_id (username, email)
+                profiles (username, email)
             `)
             .order('created_at', { ascending: false })
             .limit(20);
+
+        // If relationship doesn't work, fetch separately
+        if (error && error.message.includes('relationship')) {
+            console.warn('Relationship not found, fetching data separately');
+            
+            const { data: alertsOnly, error: alertsError } = await supabaseClient
+                .from('security_alerts')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(20);
+            
+            if (alertsError) {
+                console.error('Security alerts query error:', alertsError);
+                throw alertsError;
+            }
+            
+            // Get unique user IDs
+            const userIds = [...new Set(alertsOnly.map(a => a.user_id).filter(id => id))];
+            
+            // Fetch user profiles
+            const { data: profiles, error: profilesError } = await supabaseClient
+                .from('profiles')
+                .select('id, username, email')
+                .in('id', userIds);
+            
+            if (profilesError) {
+                console.warn('Could not fetch profiles:', profilesError);
+            }
+            
+            // Merge data
+            const profilesMap = {};
+            if (profiles) {
+                profiles.forEach(p => profilesMap[p.id] = p);
+            }
+            
+            alerts = alertsOnly.map(alert => ({
+                ...alert,
+                profiles: profilesMap[alert.user_id] || null
+            }));
+            
+            error = null;
+        }
 
         if (error) {
             console.error('Security alerts query error:', error);
