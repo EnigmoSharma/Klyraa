@@ -51,6 +51,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     opt.value = spot.id;
                     
                     // Check if spot has sensor and is currently occupied
+                    // Note: We show status but DON'T disable the option
+                    // Sensor check will happen during booking based on start time
                     let statusText = '';
                     if (spot.sensor_id && sensorMap[spot.sensor_id]) {
                         const sensor = sensorMap[spot.sensor_id];
@@ -60,13 +62,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         // If sensor updated recently (within 2 min) and shows occupied
                         if (sensorAge < 2 && sensor.obstacle === true) {
                             statusText = ' [Currently Occupied]';
-                            opt.disabled = true;
-                            opt.style.color = '#999';
+                            // Don't disable - user might be booking for future
                         }
                     }
                     
                     opt.textContent = `${spot.spot_number} - ${spot.location}${statusText}`;
                     opt.dataset.spotNumber = spot.spot_number;
+                    opt.dataset.sensorId = spot.sensor_id || '';
                     spotSelect.appendChild(opt);
                 });
             } else {
