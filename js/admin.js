@@ -53,14 +53,35 @@ async function loadDashboard() {
 
         if (bookingsError) throw bookingsError;
 
+        // Load sensor data to count actually occupied spots
+        const { data: sensorData, error: sensorError } = await supabaseClient
+            .from('sensor_data')
+            .select('id, obstacle, updated_at')
+            .gte('updated_at', new Date(Date.now() - 300000).toISOString()); // Last 5 minutes
+
+        let occupiedCount = 0;
+        if (!sensorError && sensorData) {
+            // Count spots with sensors showing obstacle = true
+            const sensorMap = {};
+            sensorData.forEach(s => {
+                sensorMap[s.id] = s.obstacle === true;
+            });
+            
+            spots.forEach(spot => {
+                if (spot.sensor_id && sensorMap[spot.sensor_id]) {
+                    occupiedCount++;
+                }
+            });
+        }
+
         // Update stats
         document.getElementById('total-spots').textContent = spots.length;
-        document.getElementById('available-spots').textContent = spots.filter(s => s.is_available).length;
-        document.getElementById('occupied-spots').textContent = spots.filter(s => !s.is_available).length;
+        document.getElementById('available-spots').textContent = spots.length - occupiedCount;
+        document.getElementById('occupied-spots').textContent = occupiedCount;
         document.getElementById('active-bookings').textContent = bookings.length;
 
         // Render parking grid
-        renderParkingGrid(spots, bookings);
+        renderParkingGrid(spots, bookings, sensorData);
 
     } catch (error) {
         console.error('Error loading dashboard:', error);
@@ -68,12 +89,21 @@ async function loadDashboard() {
     }
 }
 
-function renderParkingGrid(spots, bookings) {
+function renderParkingGrid(spots, bookings, sensorData = []) {
     const grid = document.getElementById('parking-grid');
     grid.innerHTML = '';
 
+    // Create sensor map for quick lookup
+    const sensorMap = {};
+    if (sensorData) {
+        sensorData.forEach(s => {
+            sensorMap[s.id] = s.obstacle === true;
+        });
+    }
+
     spots.forEach(spot => {
-        const isOccupied = !spot.is_available;
+        // Check if spot is occupied based on sensor data
+        const isOccupied = spot.sensor_id && sensorMap[spot.sensor_id];
         const activeBooking = bookings.find(b => b.spot_id === spot.id && new Date(b.end_time) > new Date());
 
         const spotDiv = document.createElement('div');
@@ -85,6 +115,7 @@ function renderParkingGrid(spots, bookings) {
             <div class="text-2xl mb-2">${spot.spot_number}</div>
             <div class="text-sm">${isOccupied ? 'Occupied' : 'Available'}</div>
             ${activeBooking ? '<div class="text-xs mt-1">Booked</div>' : ''}
+            ${spot.sensor_id ? '<div class="text-xs mt-1 opacity-75"><i class="fa fa-wifi"></i> Sensor</div>' : ''}
         `;
         spotDiv.onclick = () => showSpotDetails(spot.id);
         grid.appendChild(spotDiv);
@@ -272,6 +303,8 @@ function adminLogout() {
 // Load security alerts
 async function loadSecurityAlerts() {
     try {
+        console.log('Loading security alerts...');
+        
         const { data: alerts, error } = await supabaseClient
             .from('security_alerts')
             .select(`
@@ -281,16 +314,31 @@ async function loadSecurityAlerts() {
             .order('created_at', { ascending: false })
             .limit(20);
 
-        if (error) throw error;
+        if (error) {
+            console.error('Security alerts query error:', error);
+            throw error;
+        }
+
+        console.log('Security alerts loaded:', alerts);
 
         const container = document.getElementById('security-alerts-container');
         const alertCount = document.getElementById('alert-count');
         
-        const pendingCount = alerts.filter(a => a.status === 'pending').length;
-        alertCount.textContent = `${pendingCount} Pending`;
+        if (!container) {
+            console.error('Security alerts container not found in HTML');
+            return;
+        }
+        
+        if (!alertCount) {
+            console.error('Alert count element not found in HTML');
+        } else {
+            const pendingCount = alerts ? alerts.filter(a => a.status === 'pending').length : 0;
+            alertCount.textContent = `${pendingCount} Pending`;
+        }
 
         if (!alerts || alerts.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-center py-4">No security alerts</p>';
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No security alerts yet. Alerts will appear here when users report issues.</p>';
+            console.log('No security alerts found');
             return;
         }
 
@@ -351,9 +399,21 @@ async function loadSecurityAlerts() {
                 </div>
             `;
         }).join('');
+        
+        console.log(`Rendered ${alerts.length} security alerts`);
 
     } catch (error) {
         console.error('Error loading security alerts:', error);
+        const container = document.getElementById('security-alerts-container');
+        if (container) {
+            container.innerHTML = `
+                <div class="text-red-600 text-center py-4">
+                    <i class="fa fa-exclamation-triangle"></i> 
+                    Error loading security alerts: ${error.message}
+                    <br><small>Check console for details</small>
+                </div>
+            `;
+        }
     }
 }
 
