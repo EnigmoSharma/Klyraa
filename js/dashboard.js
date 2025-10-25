@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient.js';
+import { overstayMonitor } from './overstayMonitor.js';
 
 document.addEventListener('DOMContentLoaded', async function() {
     const loading = document.getElementById('loading');
@@ -31,6 +32,23 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Update welcome message and balance
         welcomeName.textContent = profile.username;
         document.getElementById('balance-amount').textContent = parseFloat(profile.credit_balance).toFixed(2);
+        
+        // Check for pending debt
+        const pendingDebt = await overstayMonitor.checkPendingDebt(user.id);
+        if (pendingDebt > 0) {
+            // Show debt warning in balance section
+            const balanceSection = document.getElementById('balance-amount').parentElement;
+            if (!document.getElementById('debt-warning')) {
+                const debtWarning = document.createElement('p');
+                debtWarning.id = 'debt-warning';
+                debtWarning.className = 'text-red-600 text-sm mt-1';
+                debtWarning.innerHTML = `<i class="fa fa-warning"></i> Pending debt: ₹${pendingDebt.toFixed(2)}`;
+                balanceSection.appendChild(debtWarning);
+            }
+        }
+        
+        // Start overstay monitoring
+        overstayMonitor.startMonitoring();
 
         // Setup coupon form
         setupCouponForm(user.id);
@@ -74,6 +92,30 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Setup buy coupon button
         setupBuyCouponButton();
+        
+        // Setup refresh bookings listener
+        document.addEventListener('reloadBookings', async () => {
+            const { data: updatedBookings } = await supabase
+                .from('bookings')
+                .select(`
+                    *,
+                    parking_spots (
+                        spot_number,
+                        location,
+                        camera_feed_url
+                    )
+                `)
+                .eq('user_id', user.id)
+                .eq('status', 'active')
+                .order('start_time', { ascending: true });
+            
+            displayBookings(updatedBookings || []);
+        });
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            overstayMonitor.stopMonitoring();
+        });
 
         // Hide loading, show content
         loading.classList.add('hidden');
@@ -155,9 +197,17 @@ function displayBookings(bookings) {
         const startTime = new Date(booking.start_time);
         const endTime = new Date(booking.end_time);
         
-        if (now >= startTime && now <= endTime) {
+        // Check if booking is overstaying (past end time but still active)
+        if (now > endTime && booking.status === 'active') {
+            booking.isOverstaying = true;
+            ongoingBookings.push(booking); // Keep overstaying bookings in ongoing
+        } else if (now >= startTime && now <= endTime) {
             ongoingBookings.push(booking);
         } else if (now < startTime) {
+            // Check if this booking was reassigned
+            if (booking.reassigned_from) {
+                booking.isReassigned = true;
+            }
             upcomingBookings.push(booking);
         }
     });
@@ -177,63 +227,83 @@ function displayBookings(bookings) {
     }
 }
 
-function createBookingCard(booking, isOngoing) {
-    const startTime = new Date(booking.start_time).toLocaleString('en-IN', {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-    });
-    const endTime = new Date(booking.end_time).toLocaleString('en-IN', {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-    });
-
-    const statusBadge = isOngoing 
-        ? '<span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full flex items-center gap-1"><i class="fa fa-circle text-xs"></i>Active</span>'
-        : '<span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Upcoming</span>';
-
-    const liveFeedButton = isOngoing
-        ? `<button 
-            class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
-            onclick="openCameraFeed('${booking.id}', '${booking.parking_spots.spot_number}', '${booking.parking_spots.location}', '${booking.vehicle_number}', '${startTime} - ${endTime}', '${booking.parking_spots.camera_feed_url}')"
-        >
-            <i class="fa fa-video-camera"></i>
-            Watch Live Feed
-        </button>`
-        : `<button 
-            class="w-full bg-gray-400 text-white py-2 px-4 rounded-lg cursor-not-allowed font-medium flex items-center justify-center gap-2"
-            disabled
-        >
-            <i class="fa fa-video-camera"></i>
-            Live Feed (Available at start time)
-        </button>`;
-
-    const extendButton = isOngoing
-        ? `<button 
-            class="w-full mt-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
-            onclick="showExtendBookingModal('${booking.id}', '${booking.parking_spots.spot_number}')"
-        >
-            <i class="fa fa-clock-o"></i>
-            Extend Booking
-        </button>`
-        : '';
-
+function createBookingCard(booking, isOngoing = false) {
+    const startTime = new Date(booking.start_time);
+    const endTime = new Date(booking.end_time);
+    const spotNumber = booking.parking_spots?.spot_number || 'Unknown';
+    const location = booking.parking_spots?.location || 'Unknown';
+    const cameraUrl = booking.parking_spots?.camera_feed_url || '';
+    
+    // Determine booking status and styling
+    let statusBadge = '';
+    let borderColor = 'border-blue-600';
+    let extraInfo = '';
+    
+    if (booking.isOverstaying) {
+        statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">OVERSTAYING</span>';
+        borderColor = 'border-red-600';
+        const overstayMinutes = Math.round((new Date() - endTime) / 60000);
+        extraInfo = `
+            <p class="text-sm text-red-600 font-semibold mt-2">
+                <i class="fa fa-warning"></i> Overstaying by ${overstayMinutes} minutes
+                ${booking.overstay_penalty ? `(Penalty: ₹${booking.overstay_penalty})` : ''}
+            </p>
+        `;
+    } else if (isOngoing) {
+        statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">ONGOING</span>';
+        borderColor = 'border-green-600';
+    } else if (booking.isReassigned) {
+        statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">REASSIGNED</span>';
+        borderColor = 'border-yellow-600';
+        extraInfo = `
+            <p class="text-sm text-yellow-700 mt-2">
+                <i class="fa fa-info-circle"></i> ${booking.cancellation_reason || 'Reassigned to different spot'}
+            </p>
+        `;
+    } else {
+        statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">UPCOMING</span>';
+    }
+    
+    const liveButton = isOngoing && cameraUrl ? 
+        `<button onclick="openCameraFeed('${booking.id}', '${spotNumber}', '${location}', '${booking.vehicle_number}', '${startTime.toLocaleString()} - ${endTime.toLocaleString()}', '${cameraUrl}')" 
+                class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
+            <i class="fa fa-video-camera"></i> Watch Live Feed
+        </button>` : '';
+    
+    const extendButton = isOngoing && !booking.isOverstaying ?
+        `<button onclick="showExtendBookingModal('${booking.id}', '${spotNumber}')" 
+                class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+            <i class="fa fa-clock-o"></i> Extend Booking
+        </button>` : '';
+    
     return `
-        <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow ${isOngoing ? 'border-l-4 border-l-green-500' : ''}">
-            <div class="flex justify-between items-start mb-3">
-                <div>
-                    <h4 class="font-semibold text-lg text-gray-900">Spot ${booking.parking_spots.spot_number}</h4>
-                    <p class="text-sm text-gray-600">${booking.parking_spots.location}</p>
+        <div class="border-l-4 ${borderColor} bg-white shadow-sm rounded-lg p-4 mb-3">
+            <div class="flex justify-between items-start">
+                <div class="flex-grow">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa fa-car text-blue-600"></i>
+                        <h3 class="font-semibold">${booking.vehicle_number}</h3>
+                        ${statusBadge}
+                    </div>
+                    <p class="text-sm text-gray-600">
+                        <i class="fa fa-map-marker"></i> Spot ${spotNumber} - ${location}
+                    </p>
+                    <p class="text-sm text-gray-600">
+                        <i class="fa fa-calendar"></i> ${startTime.toLocaleDateString()}
+                    </p>
+                    <p class="text-sm text-gray-600">
+                        <i class="fa fa-clock-o"></i> ${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()}
+                    </p>
+                    <p class="text-sm font-semibold text-gray-700 mt-2">
+                        Cost: ₹${booking.total_cost}
+                    </p>
+                    ${extraInfo}
                 </div>
-                ${statusBadge}
+                <div class="flex flex-col gap-2">
+                    ${liveButton}
+                    ${extendButton}
+                </div>
             </div>
-            <div class="space-y-2 text-sm text-gray-600 mb-4">
-                <p><i class="fa fa-car mr-2"></i><strong>Vehicle:</strong> ${booking.vehicle_number}</p>
-                <p><i class="fa fa-clock-o mr-2"></i><strong>Start:</strong> ${startTime}</p>
-                <p><i class="fa fa-clock-o mr-2"></i><strong>End:</strong> ${endTime}</p>
-                <p><i class="fa fa-money mr-2"></i><strong>Cost:</strong> ₹${parseFloat(booking.total_cost).toFixed(2)}</p>
-            </div>
-            ${liveFeedButton}
-            ${extendButton}
         </div>
     `;
 }

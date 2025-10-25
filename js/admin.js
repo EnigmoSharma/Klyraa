@@ -1,5 +1,7 @@
 // Admin Dashboard JavaScript
-const { createClient } = supabase;
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { sensorIntegration } from './sensorIntegration.js';
+
 const supabaseUrl = 'https://qkfqxemmuzdnbbriecnq.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrZnF4ZW1tdXpkbmJicmllY25xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMjgyNTcsImV4cCI6MjA3NjcwNDI1N30.OFjfbDCTocSm4TH-NuDYX03hQg-CsOD93lT0DdG0dc4';
 const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
@@ -19,12 +21,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Load security alerts
     await loadSecurityAlerts();
+    
+    // Start sensor monitoring for overstay detection
+    sensorIntegration.startMonitoring();
 
     // Setup coupon form
     document.getElementById('coupon-form').addEventListener('submit', generateCoupon);
     
     // Refresh alerts every 30 seconds
     setInterval(loadSecurityAlerts, 30000);
+    
+    // Refresh dashboard every minute to update overstay status
+    setInterval(loadDashboard, 60000);
 });
 
 async function loadDashboard() {
