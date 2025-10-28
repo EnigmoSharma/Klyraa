@@ -197,6 +197,16 @@ function displayBookings(bookings) {
         const startTime = new Date(booking.start_time);
         const endTime = new Date(booking.end_time);
         
+        console.log('Booking:', {
+            vehicle: booking.vehicle_number,
+            start: startTime,
+            end: endTime,
+            now: now,
+            isUpcoming: now < startTime,
+            isOngoing: now >= startTime && now <= endTime,
+            isPast: now > endTime
+        });
+        
         // Check if booking is overstaying (past end time but still active)
         if (now > endTime && booking.status === 'active') {
             booking.isOverstaying = true;
@@ -211,6 +221,9 @@ function displayBookings(bookings) {
             upcomingBookings.push(booking);
         }
     });
+    
+    console.log('Ongoing bookings:', ongoingBookings.length);
+    console.log('Upcoming bookings:', upcomingBookings.length);
 
     // Display ongoing bookings
     if (ongoingBookings.length === 0) {
