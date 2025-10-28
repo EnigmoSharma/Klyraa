@@ -6,7 +6,7 @@
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
--- Drop existing tables if they exist
+-- Drop existing tables if they exist (clean slate)
 DROP TABLE IF EXISTS transaction_history CASCADE;
 DROP TABLE IF EXISTS coupons CASCADE;
 DROP TABLE IF EXISTS profiles CASCADE;
@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS sensor_data CASCADE;
 DROP TABLE IF EXISTS parking_spots CASCADE;
 DROP TABLE IF EXISTS callback_requests CASCADE;
 DROP TABLE IF EXISTS contact_us_requests CASCADE;
+DROP TABLE IF EXISTS security_alerts CASCADE;
 
 -- =====================================================
 -- ADMINS TABLE (Simple admin authentication)
@@ -38,6 +39,7 @@ CREATE TABLE profiles (
     username TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     credit_balance DECIMAL(10, 2) DEFAULT 500.00 NOT NULL,
+    pending_debt DECIMAL(10, 2) DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
@@ -105,6 +107,9 @@ CREATE TABLE bookings (
     overstay_penalty DECIMAL(10, 2) DEFAULT 0,
     status TEXT DEFAULT 'active' NOT NULL CHECK (status IN ('active', 'completed', 'cancelled', 'overstayed')),
     cancellation_reason TEXT,
+    reassigned_from UUID REFERENCES parking_spots(id),
+    reassignment_notified BOOLEAN DEFAULT FALSE,
+    cancellation_notified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     CONSTRAINT valid_booking_time CHECK (end_time > start_time),
     -- Prevent overlapping bookings with 30-minute buffer
@@ -148,6 +153,25 @@ CREATE TABLE contact_us_requests (
     subject TEXT NOT NULL,
     message TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- =====================================================
+-- SECURITY ALERTS TABLE
+-- =====================================================
+CREATE TABLE security_alerts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+    spot_id UUID NOT NULL REFERENCES parking_spots(id) ON DELETE CASCADE,
+    spot_number TEXT NOT NULL,
+    location TEXT NOT NULL,
+    vehicle_number TEXT,
+    screenshot_url TEXT,
+    description TEXT NOT NULL,
+    status TEXT DEFAULT 'pending' NOT NULL CHECK (status IN ('pending', 'reviewing', 'resolved')),
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    resolved_at TIMESTAMPTZ,
+    resolved_by TEXT
 );
 
 -- =====================================================
@@ -324,104 +348,203 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- =====================================================
--- FUNCTION: Handle Overstay and Cancel Affected Bookings
+-- FUNCTION: Enhanced Overstay Detection and Handling
 -- =====================================================
-CREATE OR REPLACE FUNCTION handle_overstay(
-    p_overstaying_booking_id UUID
+CREATE OR REPLACE FUNCTION handle_overstay_enhanced(
+    p_spot_id UUID,
+    p_current_time TIMESTAMPTZ DEFAULT NOW()
 )
 RETURNS JSON AS $$
 DECLARE
-    v_overstay_booking RECORD;
+    v_current_booking RECORD;
     v_affected_booking RECORD;
+    v_alternative_spot RECORD;
+    v_overstay_minutes INTEGER;
     v_overstay_hours DECIMAL(10, 2);
     v_hourly_charge DECIMAL(10, 2) := 50;
     v_penalty_per_hour DECIMAL(10, 2) := 30;
     v_total_overstay_cost DECIMAL(10, 2);
+    v_compensation_per_hour DECIMAL(10, 2) := 15;
+    v_affected_booking_hours DECIMAL(10, 2);
     v_compensation DECIMAL(10, 2);
     v_user_balance DECIMAL(10, 2);
-    v_affected_count INTEGER := 0;
+    v_reassignments JSON[] := '{}';
+    v_cancellations JSON[] := '{}';
+    v_total_compensation DECIMAL(10, 2) := 0;
+    v_system_penalty DECIMAL(10, 2);
 BEGIN
-    -- Get overstaying booking details
-    SELECT * INTO v_overstay_booking
-    FROM bookings
-    WHERE id = p_overstaying_booking_id;
+    SELECT * INTO v_current_booking FROM bookings
+    WHERE spot_id = p_spot_id AND status = 'active' AND end_time < p_current_time
+    ORDER BY end_time DESC LIMIT 1;
     
-    IF v_overstay_booking.id IS NULL THEN
-        RETURN json_build_object('success', false, 'message', 'Booking not found');
+    IF v_current_booking.id IS NULL THEN
+        RETURN json_build_object('success', false, 'message', 'No overstaying booking found');
     END IF;
     
-    -- Calculate overstay hours
-    v_overstay_hours := EXTRACT(EPOCH FROM (NOW() - v_overstay_booking.buffer_end_time)) / 3600;
+    v_overstay_minutes := EXTRACT(EPOCH FROM (p_current_time - v_current_booking.end_time)) / 60;
+    v_overstay_hours := v_overstay_minutes / 60.0;
     
-    IF v_overstay_hours <= 0 THEN
-        RETURN json_build_object('success', false, 'message', 'No overstay detected');
+    IF v_overstay_minutes < 5 THEN
+        RETURN json_build_object('success', false, 'message', 'Within grace period');
     END IF;
     
-    -- Calculate total cost: (₹50/hour + ₹30 penalty/hour)
     v_total_overstay_cost := v_overstay_hours * (v_hourly_charge + v_penalty_per_hour);
     
-    -- Find and cancel affected bookings
+    UPDATE bookings SET overstay_hours = v_overstay_hours, overstay_penalty = v_total_overstay_cost
+    WHERE id = v_current_booking.id;
+    
     FOR v_affected_booking IN
-        SELECT * FROM bookings
-        WHERE spot_id = v_overstay_booking.spot_id
-          AND id != p_overstaying_booking_id
-          AND status = 'active'
-          AND start_time >= v_overstay_booking.buffer_end_time
-          AND start_time <= NOW()
-        ORDER BY start_time
+        SELECT * FROM bookings WHERE spot_id = p_spot_id AND id != v_current_booking.id
+        AND status = 'active' AND start_time <= p_current_time + INTERVAL '30 minutes'
+        AND start_time > v_current_booking.end_time ORDER BY start_time
     LOOP
-        v_affected_count := v_affected_count + 1;
+        SELECT ps.* INTO v_alternative_spot FROM parking_spots ps
+        WHERE ps.id != p_spot_id AND ps.is_available = true
+        AND ps.location = (SELECT location FROM parking_spots WHERE id = p_spot_id)
+        AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.spot_id = ps.id AND b.status = 'active'
+            AND tstzrange(b.start_time, b.buffer_end_time) && tstzrange(v_affected_booking.start_time, v_affected_booking.end_time))
+        AND NOT EXISTS (SELECT 1 FROM sensor_data sd WHERE sd.id = ps.sensor_id
+            AND sd.obstacle = true AND sd.updated_at > p_current_time - INTERVAL '5 minutes') LIMIT 1;
         
-        -- Calculate compensation (₹20 from penalty)
-        v_compensation := LEAST(20 * v_overstay_hours, v_affected_booking.total_cost);
-        
-        -- Refund affected user with compensation
-        UPDATE profiles
-        SET credit_balance = credit_balance + v_affected_booking.total_cost + v_compensation
-        WHERE id = v_affected_booking.user_id;
-        
-        -- Cancel affected booking
-        UPDATE bookings
-        SET status = 'cancelled',
-            cancellation_reason = 'Previous booking overstayed. We apologize for the inconvenience. Full refund + ₹' || v_compensation || ' compensation provided.'
-        WHERE id = v_affected_booking.id;
-        
-        -- Add refund transaction
-        INSERT INTO transaction_history (user_id, amount, description)
-        VALUES (
-            v_affected_booking.user_id,
-            v_affected_booking.total_cost + v_compensation,
-            'Booking Cancelled (Overstay) - Refund + ₹' || v_compensation || ' compensation'
-        );
+        IF v_alternative_spot.id IS NOT NULL THEN
+            UPDATE bookings SET spot_id = v_alternative_spot.id, reassigned_from = p_spot_id,
+                reassignment_notified = false WHERE id = v_affected_booking.id;
+            v_reassignments := array_append(v_reassignments, json_build_object(
+                'booking_id', v_affected_booking.id, 'user_id', v_affected_booking.user_id,
+                'new_spot_number', v_alternative_spot.spot_number));
+        ELSE
+            v_affected_booking_hours := EXTRACT(EPOCH FROM (v_affected_booking.end_time - v_affected_booking.start_time)) / 3600;
+            v_compensation := v_affected_booking_hours * v_compensation_per_hour;
+            v_total_compensation := v_total_compensation + v_compensation;
+            
+            UPDATE bookings SET status = 'cancelled', cancellation_notified = false WHERE id = v_affected_booking.id;
+            UPDATE profiles SET credit_balance = credit_balance + v_affected_booking.total_cost + v_compensation
+            WHERE id = v_affected_booking.user_id;
+            INSERT INTO transaction_history (user_id, amount, description) VALUES (
+                v_affected_booking.user_id, v_affected_booking.total_cost + v_compensation,
+                'Booking Cancelled (Overstay) - Refund + ₹' || ROUND(v_compensation, 2) || ' compensation');
+            v_cancellations := array_append(v_cancellations, json_build_object(
+                'booking_id', v_affected_booking.id, 'compensation', v_compensation));
+        END IF;
     END LOOP;
     
-    -- Charge overstaying user
-    UPDATE profiles
-    SET credit_balance = credit_balance - v_total_overstay_cost
-    WHERE id = v_overstay_booking.user_id;
+    v_system_penalty := v_total_overstay_cost - v_total_compensation;
+    SELECT credit_balance INTO v_user_balance FROM profiles WHERE id = v_current_booking.user_id;
     
-    -- Update overstaying booking
-    UPDATE bookings
-    SET actual_end_time = NOW(),
-        overstay_hours = v_overstay_hours,
-        overstay_penalty = v_total_overstay_cost,
-        status = 'overstayed'
-    WHERE id = p_overstaying_booking_id;
+    IF v_user_balance >= v_total_overstay_cost THEN
+        UPDATE profiles SET credit_balance = credit_balance - v_total_overstay_cost WHERE id = v_current_booking.user_id;
+    ELSE
+        UPDATE profiles SET credit_balance = 0, pending_debt = pending_debt + (v_total_overstay_cost - v_user_balance)
+        WHERE id = v_current_booking.user_id;
+    END IF;
     
-    -- Add penalty transaction
-    INSERT INTO transaction_history (user_id, amount, description)
-    VALUES (
-        v_overstay_booking.user_id,
-        -v_total_overstay_cost,
-        'Overstay Penalty - ' || ROUND(v_overstay_hours, 2) || ' hours (₹50/hr + ₹30 penalty/hr)'
-    );
+    INSERT INTO transaction_history (user_id, amount, description) VALUES (
+        v_current_booking.user_id, -v_total_overstay_cost,
+        'Overstay Penalty - ' || ROUND(v_overstay_hours, 2) || ' hours @ ₹80/hr');
     
-    RETURN json_build_object(
-        'success', true,
-        'overstay_hours', v_overstay_hours,
-        'total_charge', v_total_overstay_cost,
-        'affected_bookings', v_affected_count
-    );
+    RETURN json_build_object('success', true, 'overstay_hours', v_overstay_hours,
+        'total_penalty', v_total_overstay_cost, 'total_compensation_paid', v_total_compensation,
+        'system_revenue', v_system_penalty, 'reassignments', v_reassignments, 'cancellations', v_cancellations);
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- FUNCTION: Check All Overstays
+-- =====================================================
+CREATE OR REPLACE FUNCTION check_all_overstays() RETURNS JSON AS $$
+DECLARE
+    v_spot RECORD; v_sensor RECORD; v_result JSON; v_all_results JSON[] := '{}';
+BEGIN
+    FOR v_spot IN SELECT ps.* FROM parking_spots ps WHERE ps.sensor_id IS NOT NULL LOOP
+        SELECT * INTO v_sensor FROM sensor_data WHERE id = v_spot.sensor_id AND updated_at > NOW() - INTERVAL '5 minutes';
+        IF v_sensor.id IS NOT NULL AND v_sensor.obstacle = true THEN
+            v_result := handle_overstay_enhanced(v_spot.id, NOW());
+            IF (v_result->>'success')::boolean THEN v_all_results := array_append(v_all_results, v_result); END IF;
+        END IF;
+    END LOOP;
+    RETURN json_build_object('success', true, 'overstays_processed', array_length(v_all_results, 1), 'results', v_all_results);
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- FUNCTION: Complete Booking on Departure
+-- =====================================================
+CREATE OR REPLACE FUNCTION complete_booking_on_departure(p_spot_id UUID) RETURNS JSON AS $$
+DECLARE v_booking RECORD; v_pending_debt DECIMAL(10, 2);
+BEGIN
+    SELECT * INTO v_booking FROM bookings WHERE spot_id = p_spot_id AND status = 'active'
+    AND start_time <= NOW() ORDER BY start_time DESC LIMIT 1;
+    IF v_booking.id IS NULL THEN RETURN json_build_object('success', false, 'message', 'No active booking found'); END IF;
+    UPDATE bookings SET status = 'completed', actual_end_time = NOW() WHERE id = v_booking.id;
+    SELECT pending_debt INTO v_pending_debt FROM profiles WHERE id = v_booking.user_id;
+    RETURN json_build_object('success', true, 'booking_id', v_booking.id, 'pending_debt', v_pending_debt);
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- FUNCTION: Validate Booking Start
+-- =====================================================
+CREATE OR REPLACE FUNCTION validate_booking_start(p_booking_id UUID) RETURNS JSON AS $$
+DECLARE
+    v_booking RECORD; v_spot RECORD; v_sensor RECORD; v_alternative_spot RECORD;
+    v_compensation DECIMAL(10, 2); v_booking_hours DECIMAL(10, 2);
+BEGIN
+    SELECT * INTO v_booking FROM bookings WHERE id = p_booking_id AND status = 'active';
+    IF v_booking.id IS NULL THEN RETURN json_build_object('success', false); END IF;
+    IF v_booking.start_time > NOW() + INTERVAL '5 minutes' THEN RETURN json_build_object('success', false); END IF;
+    SELECT * INTO v_spot FROM parking_spots WHERE id = v_booking.spot_id;
+    IF v_spot.sensor_id IS NULL THEN RETURN json_build_object('success', true); END IF;
+    SELECT * INTO v_sensor FROM sensor_data WHERE id = v_spot.sensor_id AND updated_at > NOW() - INTERVAL '2 minutes';
+    IF v_sensor.id IS NULL OR v_sensor.obstacle = false THEN RETURN json_build_object('success', true); END IF;
+    
+    SELECT ps.* INTO v_alternative_spot FROM parking_spots ps WHERE ps.id != v_booking.spot_id
+    AND ps.is_available = true AND ps.location = v_spot.location
+    AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.spot_id = ps.id AND b.status = 'active'
+        AND tstzrange(b.start_time, b.buffer_end_time) && tstzrange(v_booking.start_time, v_booking.end_time))
+    AND NOT EXISTS (SELECT 1 FROM sensor_data sd WHERE sd.id = ps.sensor_id
+        AND sd.obstacle = true AND sd.updated_at > NOW() - INTERVAL '2 minutes') LIMIT 1;
+    
+    IF v_alternative_spot.id IS NOT NULL THEN
+        UPDATE bookings SET spot_id = v_alternative_spot.id, reassigned_from = v_booking.spot_id,
+            reassignment_notified = false WHERE id = v_booking.id;
+        RETURN json_build_object('success', true, 'action', 'reassigned', 'new_spot_number', v_alternative_spot.spot_number);
+    ELSE
+        v_booking_hours := EXTRACT(EPOCH FROM (v_booking.end_time - v_booking.start_time)) / 3600;
+        v_compensation := v_booking_hours * 15;
+        UPDATE bookings SET status = 'cancelled', cancellation_notified = false WHERE id = v_booking.id;
+        UPDATE profiles SET credit_balance = credit_balance + v_booking.total_cost + v_compensation WHERE id = v_booking.user_id;
+        INSERT INTO transaction_history (user_id, amount, description) VALUES (
+            v_booking.user_id, v_booking.total_cost + v_compensation,
+            'Booking Cancelled (Spot Occupied) - Refund + ₹' || ROUND(v_compensation, 2) || ' compensation');
+        RETURN json_build_object('success', true, 'action', 'cancelled', 'refund_amount', v_booking.total_cost, 'compensation', v_compensation);
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- FUNCTION: Handle Top-up with Debt
+-- =====================================================
+CREATE OR REPLACE FUNCTION handle_topup_with_debt(p_user_id UUID, p_amount DECIMAL(10, 2)) RETURNS JSON AS $$
+DECLARE v_pending_debt DECIMAL(10, 2); v_amount_after_debt DECIMAL(10, 2);
+BEGIN
+    SELECT pending_debt INTO v_pending_debt FROM profiles WHERE id = p_user_id;
+    IF v_pending_debt > 0 THEN
+        IF p_amount > v_pending_debt THEN
+            v_amount_after_debt := p_amount - v_pending_debt;
+            UPDATE profiles SET credit_balance = credit_balance + v_amount_after_debt, pending_debt = 0 WHERE id = p_user_id;
+            INSERT INTO transaction_history (user_id, amount, description) VALUES (p_user_id, -v_pending_debt, 'Pending debt cleared');
+            INSERT INTO transaction_history (user_id, amount, description) VALUES (p_user_id, v_amount_after_debt, 'Balance added');
+        ELSE
+            UPDATE profiles SET pending_debt = pending_debt - p_amount WHERE id = p_user_id;
+            INSERT INTO transaction_history (user_id, amount, description) VALUES (p_user_id, -p_amount, 'Partial debt payment');
+            v_amount_after_debt := 0;
+        END IF;
+    ELSE
+        UPDATE profiles SET credit_balance = credit_balance + p_amount WHERE id = p_user_id;
+        INSERT INTO transaction_history (user_id, amount, description) VALUES (p_user_id, p_amount, 'Balance top-up');
+        v_amount_after_debt := p_amount;
+    END IF;
+    RETURN json_build_object('success', true, 'debt_paid', LEAST(v_pending_debt, p_amount), 'balance_added', v_amount_after_debt);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -473,3 +596,8 @@ CREATE INDEX IF NOT EXISTS idx_bookings_start_time ON bookings(start_time);
 CREATE INDEX IF NOT EXISTS idx_parking_spots_available ON parking_spots(is_available);
 CREATE INDEX IF NOT EXISTS idx_callback_requests_created_at ON callback_requests(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_contact_us_created_at ON contact_us_requests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_security_alerts_user_id ON security_alerts(user_id);
+CREATE INDEX IF NOT EXISTS idx_security_alerts_booking_id ON security_alerts(booking_id);
+CREATE INDEX IF NOT EXISTS idx_security_alerts_spot_id ON security_alerts(spot_id);
+CREATE INDEX IF NOT EXISTS idx_security_alerts_status ON security_alerts(status);
+CREATE INDEX IF NOT EXISTS idx_security_alerts_created_at ON security_alerts(created_at DESC);

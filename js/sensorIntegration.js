@@ -60,8 +60,73 @@ class SensorIntegration {
                     await this.checkForDeparture(sensor);
                 }
             }
+            
+            // Also check for bookings that are starting now
+            await this.checkBookingStarts();
         } catch (err) {
             console.error('Sensor check error:', err);
+        }
+    }
+
+    // Check for bookings that are starting now (within 5 minutes)
+    async checkBookingStarts() {
+        try {
+            const now = new Date();
+            const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60000);
+
+            // Get bookings that should be starting now
+            const { data: bookings, error: bookingError } = await supabase
+                .from('bookings')
+                .select('*')
+                .eq('status', 'active')
+                .gte('start_time', now.toISOString())
+                .lte('start_time', fiveMinutesFromNow.toISOString());
+
+            if (bookingError || !bookings || bookings.length === 0) {
+                return;
+            }
+
+            // Validate each booking
+            for (const booking of bookings) {
+                const { data, error } = await supabase.rpc('validate_booking_start', {
+                    p_booking_id: booking.id
+                });
+
+                if (error) {
+                    console.error('Error validating booking start:', error);
+                } else if (data && data.success) {
+                    if (data.action === 'reassigned') {
+                        console.log(`Booking ${booking.id} reassigned to spot ${data.new_spot_number}`);
+                        
+                        // Notify user through overstay monitor
+                        if (window.overstayMonitor) {
+                            window.overstayMonitor.showNotification(
+                                'Booking Reassigned',
+                                `Your booking has been reassigned to Spot ${data.new_spot_number} because the original spot was occupied.`,
+                                'info'
+                            );
+                        }
+                    } else if (data.action === 'cancelled') {
+                        console.log(`Booking ${booking.id} cancelled with compensation`);
+                        
+                        // Notify user
+                        if (window.overstayMonitor) {
+                            window.overstayMonitor.showNotification(
+                                'Booking Cancelled',
+                                `Your booking was cancelled because the spot was occupied. You received a refund of ₹${data.refund_amount} plus ₹${data.compensation.toFixed(2)} compensation.`,
+                                'warning'
+                            );
+                        }
+                    }
+                    
+                    // Refresh dashboard
+                    if (window.location.pathname.includes('dashboard')) {
+                        window.dispatchEvent(new CustomEvent('refreshBookings'));
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error checking booking starts:', err);
         }
     }
 
