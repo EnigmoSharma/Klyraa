@@ -95,12 +95,12 @@ CREATE TABLE sensor_data (
 -- =====================================================
 CREATE TABLE bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     spot_id UUID NOT NULL REFERENCES parking_spots(id) ON DELETE CASCADE,
     vehicle_number TEXT NOT NULL,
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
-    buffer_end_time TIMESTAMPTZ NOT NULL,
+    buffer_end_time TIMESTAMPTZ,
     total_cost DECIMAL(10, 2) NOT NULL,
     actual_end_time TIMESTAMPTZ,
     overstay_hours DECIMAL(10, 2) DEFAULT 0,
